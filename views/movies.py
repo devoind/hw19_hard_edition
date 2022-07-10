@@ -1,0 +1,80 @@
+from flask_restx import Resource, Namespace
+
+from dao.model.movie import MovieSchema
+from implemented import movie_service
+from service.decorators import *
+
+movie_ns = Namespace('movies')
+
+
+@movie_ns.route('/')
+class MoviesView(Resource):
+    @auth_requered
+    def get(self):
+        """
+        Функция для запроса списка фильмов
+
+        :return: возвращает список фильмов
+        """
+        director = request.args.get("director_id")
+        genre = request.args.get("genre_id")
+        year = request.args.get("year")
+        filters = {
+            "director_id": director,
+            "genre_id": genre,
+            "year": year,
+        }
+        all_movies = movie_service.get_all(filters)
+        res = MovieSchema(many=True).dump(all_movies)
+        return res, 200
+
+    @admin_requered
+    def post(self):
+        """
+        Функция добавления фильма
+
+        :return: возвращает добавленный фильм
+        """
+        req_json = request.json
+        movie = movie_service.create(req_json)
+        return "", 201, {"location": f"/movies/{movie.id}"}
+
+
+@movie_ns.route('/<int:mid>')
+class MovieView(Resource):
+    @auth_requered
+    def get(self, mid):
+        """
+        Функция для запроса mid-го фильма
+
+        :param mid: получение  mid фильма
+        :return: возвращает mid-й фильм
+        """
+        b = movie_service.get_one(mid)
+        sm_d = MovieSchema().dump(b)
+        return sm_d, 200
+
+    @admin_requered
+    def put(self, mid):
+        """
+        Функция для обновления mid-го фильма
+
+        :param mid:получение mid фильма
+        :return: возвращает обновленный mid-й фильм
+        """
+        req_json = request.json
+        if "id" not in req_json:
+            req_json["id"] = mid
+        movie_service.update(req_json)
+        return "", 204
+
+    @admin_requered
+    def delete(self, mid):
+        """
+        Функция для удаления mid-го фильма
+
+        :param mid:получение mid фильма
+        :return: ничего не возвращает
+        """
+        movie_service.delete(mid)
+        return "", 204
